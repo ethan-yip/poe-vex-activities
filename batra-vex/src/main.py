@@ -8,7 +8,10 @@
 # ---------------------------------------------------------------------------- #
 
 # Library imports
+import math
+
 from vex import *
+from math import *
 
 # Brain should be defined by default
 brain = Brain()
@@ -81,15 +84,109 @@ def testInertial():
     brain.screen.clear_line(8)
     brain.screen.set_cursor(8, 1)
     brain.screen.print("Inertial test terminated")
+    
+def driveStraightData(e): 
+    """
+    1. Report position, rotation and error values to the screen while driving
+    2. Parameter: e = error value (setpoint - rotation)
+    """
 
+    brain.screen.set_cursor(1, 1)
+    brain.screen.print("Position: " + str(leftMotor.position())) # Return the current motor count
+    
+    brain.screen.set_cursor(2, 1)
+    brain.screen.print("Rotation: " + str(inertial_1.rotation())) # Return the current rotation value
+    
+    brain.screen.set_cursor(3, 1)
+    brain.screen.print("Error: " + str(e)) # Return the current error
 
+def stopMotors():
+    rightMotor.stop()
+    leftMotor.stop()
+    wait(0.5, SECONDS) # Wait 0.5 seconds for the system to stabilize
+    
+def driveStraight(distance, setpoint, motorVelocity):
+    """
+    1. distance = distance to travel in inches
+    2. setpoint = 0-degrees of rotation for driving straight
+    3. motorVelocity = the velocity of the motors (+) => forward, (-) => reverse
+    """
+    
+    inertial_1.reset_rotation() # Reset the rotation before each driving 
+    
+    kP = 0.005      # Proportional constant for driving straight
+                    # used to calculate the correctionto maintain course
+                    # If too small, correction will occur too slowly
+                    # If too large, overcorrection will occur
+                    # Determine best value by iteratively testing
+                    
+    wheelDiameter = 4 # Wheel dia. = 4 inches
+    
+    # Calculate the distance in terms of encoder ticks (1 tick = 1 degreee)
+    #distance (ticks) = Distance in inches / Wheel circumference * 360 (degrees in one rotation)
+     
+    wheelCircumference = wheelDiameter * math.pi # Wheel circumeference
+    distance = (distance / wheelCircumference) * 360 # Distance in ticks
+     
+     # Reset the motor encoder to zero before driving
+    leftMotor.set_position(0, DEGREES)
+    rightMotor.set_position(0, DEGREES)
+    
+    # Drive forward if motor velocity > 0
+    if(motorVelocity > 0):
+        # While loop to track the distance traveled
+        while(leftMotor.position(DEGREES) < distance):
+            error = (setpoint - inertial_1.rotation()) # Caculate error
+            correction = kP * error                    # Motor velocity correction
+
+            # Correct motor velocites
+            # if error > 0 (setpoint > rotation) => drifting left
+            # if error < 0 (setpoint < rotation) => drifting right
+            
+            leftMotor.set_velocity(motorVelocity + correction, PERCENT) 
+            rightMotor.set_velocity(motorVelocity - correction, PERCENT)
+            
+            # Spin motors
+            leftMotor.spin(FORWARD)
+            rightMotor.spin(FORWARD)
+            
+            driveStraightData(error) # Display position, rotation, and error
+    
+        # Stop the motors when the desired distance is reached
+        stopMotors()
+        
+    # Drive straight in reverse if motor velocity < 0
+    else:
+        
+        distance *= -1 # distance = distance * -1
+        # While loop to track the distance traveled
+        while(leftMotor.position(DEGREES) > distance):
+            error = (setpoint - inertial_1.rotation()) # Caculate error
+            correction = kP * error                    # Motor velocity correction
+
+            # Correct motor velocites
+            # if error > 0 (setpoint > rotation) => drifting left
+            # if error < 0 (setpoint < rotation) => drifting right
+            
+            leftMotor.set_velocity(motorVelocity + correction, PERCENT) 
+            rightMotor.set_velocity(motorVelocity - correction, PERCENT)
+            
+            # Spin motors
+            leftMotor.spin(FORWARD)
+            rightMotor.spin(FORWARD)
+            
+            driveStraightData(error) # Display position, rotation, and error
+    
+        # Stop the motors when the desired distance is reached
+        stopMotors()
+            
 def main():
     """
     The main() function is the program that will be executed by the brain
     """
     bump()  # call bump() to executed the program
     intertialCalibration()  # Calibrate the inertial sensor
-    testInertial()  # Test the inertial's output
 
+    driveStraight(90, 0, 50) # Call driveStaight() with distance, setpoint, and motor velocity parameters
 
 main()
