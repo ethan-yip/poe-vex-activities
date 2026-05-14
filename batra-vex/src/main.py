@@ -11,7 +11,6 @@
 import math
 
 from vex import *
-from math import *
 
 # Brain should be defined by default
 brain = Brain()
