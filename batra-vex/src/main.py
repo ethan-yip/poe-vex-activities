@@ -117,7 +117,7 @@ def driveStraight(distance, setpoint, motorVelocity):
     leftMotor.set_stopping(COAST)
     rightMotor.set_stopping(COAST)
     
-    kP = 0.30       # Proportional constant for driving straight
+    kP = 0.31       # Proportional constant for driving straight
                     # used to calculate the correctionto maintain course
                     # If too small, correction will occur too slowly
                     # If too large, overcorrection will occur
@@ -280,9 +280,9 @@ def main():
     intertialCalibration()  # Calibrate the inertial sensor
 
     """
-    driveStraight(84, 0, 50) # Call driveStaight() with distance, setpoint, and motor velocity parameters
+    driveStraight(83.8, 0, 50) # Call driveStaight() with distance, setpoint, and motor velocity parameters
     wait(4, SECONDS) # Wait 4 seconds before executing the next command
-    driveStraight(84, 0, -50) # Call driveStaight() with distance, setpoint, and motor velocity parameters to drive in reverse
+    driveStraight(83.8, 0, -50) # Call driveStaight() with distance, setpoint, and motor velocity parameters to drive in reverse
     """
     
     pointTurn(224)
