@@ -111,7 +111,11 @@ def driveStraight(distance, setpoint, motorVelocity):
     3. motorVelocity = the velocity of the motors (+) => forward, (-) => reverse
     """
     
-    inertial_1.reset_rotation() # Reset the rotation before each driving 
+    inertial_1.reset_rotation() # Reset the rotation before each driving
+    
+    # Set stopping mode for the motors
+    leftMotor.set_stopping(COAST)
+    rightMotor.set_stopping(COAST)
     
     kP = 0.30       # Proportional constant for driving straight
                     # used to calculate the correctionto maintain course
@@ -178,7 +182,96 @@ def driveStraight(distance, setpoint, motorVelocity):
     
         # Stop the motors when the desired distance is reached
         stopMotors()
-            
+
+def turnData(turnError, derivative):
+    """
+    Print the current heading, turning error and derivative values
+    """
+    brain.screen.set_cursor(1, 1)
+    brain.screen.print("Heading: " + str(inertial_1.heading())) # Return the current motor count
+    
+    brain.screen.set_cursor(2, 1)
+    brain.screen.print("Error: " + str(abs(turnError))) # Return the error value (absolute value to avoid negative error values)
+    
+    brain.screen.set_cursor(3, 1)
+    brain.screen.print("Derivative: " + str(derivative)) # Return the derivative value
+
+def pointTurn(setPoint):
+    """
+    1. Perform a point turn using using the inertial sensor and proportional and derivative control
+    2. Arguement: Desired heading (setpoint)
+    """
+
+    brain.screen.clear_screen() # Clear the brain's screen
+    
+    # Set stopping mode for turn
+    leftMotor.set_stopping(BRAKE)
+    rightMotor.set_stopping(BRAKE)
+    
+    # Calculate the difference between setPoint and current heading
+    difference = setPoint - inertial_1.heading()
+    
+    # Want to minimizr the amount of turn required
+    if(setPoint > inertial_1.heading()):
+        if(abs(difference) <= 180): # Turn CW
+            clockwise = True
+        else: # Turn CCW
+            clockwise = False
+    else:
+        if(abs(difference) <= 180): # Turn CCW
+            clockwise = False
+        else: # Turn CW
+            clockwise = True
+    
+    # Define the kP and kD constants for the CW and CCW turnus
+    if(clockwise):      
+        kP = 0.04       # Values if clockwise
+        kD = 0.00
+    else:               
+        kP = 0.04       # Values if counterclocwise
+        kD = 0.00
+    
+    # Define maximum velocity and previous error terms
+    maxVelocity = 50          # Units : %
+    previousError = 0.0       # Error from the previous iteration, used to calculate the derivative term
+    
+    while(True):
+        turnError = setPoint - inertial_1.heading()
+        derivative = turnError - previousError
+        
+        # Stop motors and exit the control loop when the error and
+        # derivate terms are sufficiently small to ensure the
+        # setpoint was reached without osillation
+        if(abs(turnError) < 1 and abs(derivative) < 0.2):
+            stopMotors()    # Stop the motors
+            break           # Leave the loop
+        
+        # Proportional and Derivative correction calculation
+        turnCorrection = (kP * turnError) + (kD * derivative)
+        
+        # Limit the corrective term to make sure we don't exceed the maximum velocity
+        if(abs(turnCorrection) > 1):
+            turnCorrection = 1
+        
+        turnVelocity =  turnCorrection * maxVelocity 
+        
+        if(clockwise): # Turn CW
+            leftMotor.set_velocity(turnVelocity)
+            rightMotor.set_velocity(-1 * turnVelocity)
+        else: # Turn CCW
+            leftMotor.set_velocity(-1 * turnVelocity)
+            rightMotor.set_velocity(turnVelocity)
+        
+        # Spin the motors
+        leftMotor.spin(FORWARD)
+        rightMotor.spin(FORWARD)
+        
+        turnData(turnError, derivative) # Print the heading, error, and derivative values to the screen
+        
+        previousError = turnError # Update the previous error for the next iteration
+        
+        wait(20, MSEC) # Wait 20 ms
+        
 def main():
     """
     The main() function is the program that will be executed by the brain
@@ -186,7 +279,18 @@ def main():
     bump()  # call bump() to executed the program
     intertialCalibration()  # Calibrate the inertial sensor
 
+    """
     driveStraight(84, 0, 50) # Call driveStaight() with distance, setpoint, and motor velocity parameters
     wait(4, SECONDS) # Wait 4 seconds before executing the next command
     driveStraight(84, 0, -50) # Call driveStaight() with distance, setpoint, and motor velocity parameters to drive in reverse
+    """
+    
+    pointTurn(224)
+    """
+    wait(2, SECONDS)
+    pointTurn(27)
+    wait(2, SECONDS)
+    pointTurn(135)
+    """
+
 main()
